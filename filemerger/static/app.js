@@ -1,53 +1,31 @@
-const EXT_BY_TYPE = {
-  pdf: ["pdf"],
-  excel: ["xlsx", "xls", "csv"],
-  word: ["docx"],
-};
+const ALLOWED_EXTS = ["pdf", "xlsx", "xls", "csv", "docx"];
 
-let currentType = "pdf";
-let selectedFiles = []; // { file, protected, password }
+let selectedFiles = []; // { file, password, passwordRequired }
 
-const typeBtns = document.querySelectorAll(".type-btn");
 const fileInput = document.getElementById("fileInput");
 const fileListEl = document.getElementById("fileList");
 const outNameEl = document.getElementById("outName");
 const mergeBtn = document.getElementById("mergeBtn");
 const statusEl = document.getElementById("status");
 
-function acceptAttr() {
-  return EXT_BY_TYPE[currentType].map((e) => "." + e).join(",");
-}
-
-typeBtns.forEach((btn) => {
-  btn.addEventListener("click", () => {
-    typeBtns.forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-    currentType = btn.dataset.type;
-    fileInput.setAttribute("accept", acceptAttr());
-    selectedFiles = [];
-    renderFileList();
-    setStatus("", "");
-  });
-});
-fileInput.setAttribute("accept", acceptAttr());
-
 fileInput.addEventListener("change", () => {
-  const allowed = EXT_BY_TYPE[currentType];
   const rejected = [];
   for (const file of fileInput.files) {
     const ext = file.name.split(".").pop().toLowerCase();
-    if (!allowed.includes(ext)) {
+    if (!ALLOWED_EXTS.includes(ext)) {
       rejected.push(file.name);
       continue;
     }
-    selectedFiles.push({ file, protected: false, password: "" });
+    selectedFiles.push({ file, password: "", passwordRequired: false });
   }
   fileInput.value = "";
   if (rejected.length) {
     setStatus(
-      `Skipped file(s) not matching "${currentType}" type: ${rejected.join(", ")}`,
+      `Skipped unsupported file(s): ${rejected.join(", ")}. Supported: ${ALLOWED_EXTS.map((e) => "." + e).join(", ")}`,
       "error"
     );
+  } else {
+    setStatus("", "");
   }
   renderFileList();
 });
@@ -56,35 +34,24 @@ function renderFileList() {
   fileListEl.innerHTML = "";
   selectedFiles.forEach((entry, idx) => {
     const row = document.createElement("div");
-    row.className = "file-row" + (entry.protected ? " protected" : "");
+    row.className = "file-row" + (entry.passwordRequired ? " protected" : "");
 
     const name = document.createElement("span");
     name.className = "fname";
     name.textContent = `${idx + 1}. ${entry.file.name}`;
     row.appendChild(name);
 
-    const label = document.createElement("label");
-    label.className = "protected-label";
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.checked = entry.protected;
-    cb.addEventListener("change", () => {
-      entry.protected = cb.checked;
-      renderFileList();
-    });
-    label.appendChild(cb);
-    label.appendChild(document.createTextNode("Password protected"));
-    row.appendChild(label);
-
-    const pw = document.createElement("input");
-    pw.type = "password";
-    pw.className = "pw-input";
-    pw.placeholder = "Password";
-    pw.value = entry.password;
-    pw.addEventListener("input", () => {
-      entry.password = pw.value;
-    });
-    row.appendChild(pw);
+    if (entry.passwordRequired) {
+      const pw = document.createElement("input");
+      pw.type = "password";
+      pw.className = "pw-input";
+      pw.placeholder = "Password required";
+      pw.value = entry.password;
+      pw.addEventListener("input", () => {
+        entry.password = pw.value;
+      });
+      row.appendChild(pw);
+    }
 
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
@@ -105,28 +72,31 @@ function setStatus(msg, kind) {
   statusEl.className = "status" + (kind ? " " + kind : "");
 }
 
-mergeBtn.addEventListener("click", async () => {
-  if (selectedFiles.length < 2) {
-    setStatus("Add at least two files of the selected type to merge.", "error");
+async function attemptMerge() {
+  if (selectedFiles.length < 1) {
+    setStatus("Add at least one file.", "error");
+    return;
+  }
+
+  const outName = outNameEl.value.trim();
+  if (!outName || !outName.includes(".")) {
+    setStatus('Output file name must include an extension, e.g. "merged.pdf".', "error");
+    return;
+  }
+
+  const stillMissing = selectedFiles.filter((e) => e.passwordRequired && !e.password);
+  if (stillMissing.length) {
+    setStatus("Enter the password for the file(s) marked above.", "error");
     return;
   }
 
   const passwords = {};
   selectedFiles.forEach((entry, idx) => {
-    if (entry.protected && entry.password) {
-      passwords[idx] = entry.password;
-    }
+    if (entry.password) passwords[idx] = entry.password;
   });
 
-  const missing = selectedFiles.some((e) => e.protected && !e.password);
-  if (missing) {
-    setStatus("Please enter a password for every file marked as protected.", "error");
-    return;
-  }
-
   const formData = new FormData();
-  formData.append("file_type", currentType);
-  formData.append("output_name", outNameEl.value.trim());
+  formData.append("output_name", outName);
   formData.append("passwords", JSON.stringify(passwords));
   selectedFiles.forEach((entry) => formData.append("files", entry.file));
 
@@ -135,11 +105,30 @@ mergeBtn.addEventListener("click", async () => {
 
   try {
     const resp = await fetch("/api/merge", { method: "POST", body: formData });
+
+    if (resp.status === 422) {
+      const data = await resp.json().catch(() => ({}));
+      if (data.password_required && data.password_required.length) {
+        data.password_required.forEach((item) => {
+          selectedFiles[item.index].passwordRequired = true;
+        });
+        renderFileList();
+        setStatus(
+          `Password needed for: ${data.password_required.map((i) => i.name).join(", ")}. Enter it above and click Merge again.`,
+          "error"
+        );
+        return;
+      }
+      setStatus(data.error || "Merge failed.", "error");
+      return;
+    }
+
     if (!resp.ok) {
       const data = await resp.json().catch(() => ({}));
       setStatus(data.error || `Merge failed (${resp.status}).`, "error");
       return;
     }
+
     const blob = await resp.blob();
     let filename = "merged_output";
     const disposition = resp.headers.get("Content-Disposition") || "";
@@ -155,10 +144,15 @@ mergeBtn.addEventListener("click", async () => {
     a.remove();
     window.URL.revokeObjectURL(url);
 
-    setStatus(`Done — "${filename}" downloaded. Choose the save location in your browser's download prompt if asked.`, "ok");
+    setStatus(
+      `Done — "${filename}" downloaded. Use your browser's Save dialog to choose the destination if prompted.`,
+      "ok"
+    );
   } catch (err) {
     setStatus("Network error: " + err.message, "error");
   } finally {
     mergeBtn.disabled = false;
   }
-});
+}
+
+mergeBtn.addEventListener("click", attemptMerge);

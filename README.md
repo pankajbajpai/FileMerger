@@ -4,17 +4,27 @@ Merging pdf/excel/word doc into single file
 ## Acknowledgement
 1. Claude.ai is used heavily to design the code
 
-## -------------------------------------------------------------------------------
-A self-contained Python package with a local web UI to merge:
+## 
+A self-contained Python package with a local web UI to merge or convert:
 
-- **PDF** files → single `.pdf`
-- **Excel** files (`.xlsx`, `.xls`, `.csv`) → single `.xlsx` (each source file/sheet
-  becomes its own sheet in the output workbook)
-- **Word** files (`.docx`) → single `.docx`
+- **PDF**, **Excel** (`.xlsx`, `.xls`, `.csv`), and **Word** (`.docx`) files —
+  in any mix — into **one output file**.
+- The output format is decided entirely by the extension you type into the
+  output file name (must be `.pdf`, `.docx`, or `.xlsx`).
+  - If all selected files belong to the same family as the output (e.g. all
+    Excel-family files → `.xlsx`), a high-fidelity native merge is used
+    (each source file/sheet becomes its own sheet for Excel output).
+  - If files are mixed types, or a single file's type differs from the
+    output extension, each file is converted (best-effort: text and tables
+    preserved, original layout/formatting is not) into the target format
+    before merging.
+  - A single file with the *same* extension as the output is just carried
+    through untouched (effectively a rename/passthrough) — no lossy
+    conversion happens unless the output extension actually differs.
 
-Password-protected inputs are decrypted in memory using a password you supply,
-then merged. No files are uploaded anywhere — everything runs on `127.0.0.1`
-on your own machine.
+Password-protected inputs are detected automatically — you're only asked for
+a password for a file that's actually protected, never for the rest. Nothing
+is uploaded anywhere — everything runs on `127.0.0.1` on your own machine.
 
 ## Install
 
@@ -54,20 +64,25 @@ Use `filemerger --no-browser` to start the server without auto-opening a browser
 
 ## Usage
 
-1. Choose a file type (PDF / Excel / Word).
-2. Add two or more files of that type.
-3. Mark any password-protected file and enter its password.
-4. Optionally set an output file name.
-5. Click **Merge & Download** — your browser will download the merged file;
-   use your browser's "Save As" prompt to choose the destination folder.
+1. Add one or more files (any mix of PDF / Excel / Word).
+2. Type an output file name **including its extension**, e.g. `combined.docx`.
+3. Click **Merge & Download**.
+   - If any file turns out to be password protected, the app will tell you
+     exactly which one(s) and show a password box only for those — fill it
+     in and click **Merge & Download** again.
+4. Your browser downloads the result; use its "Save As" prompt to choose
+   the destination folder.
 
 ## Notes & limitations
 
-- Legacy `.doc` (old binary Word format) is **not** supported — only `.docx`.
-  Convert `.doc` to `.docx` first (e.g. in Word or LibreOffice) if needed.
-- `.xls`/`.xlsx` password protection is decrypted via `msoffcrypto-tool`.
-- Output for Excel-family merges is always `.xlsx` (the most capable format
-  among xlsx/xls/csv).
-- Output for Word-family merges is always `.docx`.
+- Legacy `.doc` (old binary Word format) is **not** supported as input —
+  only `.docx`. Convert `.doc` to `.docx` first (e.g. in Word or
+  LibreOffice) if needed.
+- Supported output extensions: `.pdf`, `.docx`, `.xlsx` only.
+- `.xls`/`.xlsx`/`.docx` password protection is decrypted via
+  `msoffcrypto-tool`; encrypted PDFs are decrypted via `pypdf`.
+- Cross-format conversion (e.g. PDF → DOCX, DOCX → XLSX) is best-effort:
+  text and tables carry over, but original layout, images, and formatting
+  do not.
 - Maximum total upload size per merge request is 512 MB (adjustable in
   `filemerger/app.py`).

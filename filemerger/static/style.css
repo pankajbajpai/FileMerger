@@ -21,21 +21,7 @@ h1 { margin-bottom: 4px; }
   margin: 18px 0 8px;
 }
 .field-label:first-child { margin-top: 0; }
-.type-select { display: flex; gap: 8px; flex-wrap: wrap; }
-.type-btn {
-  flex: 1 1 auto;
-  padding: 10px 12px;
-  border: 1px solid #d7d9e0;
-  background: #fafafa;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-}
-.type-btn.active {
-  background: #2f6feb;
-  border-color: #2f6feb;
-  color: #fff;
-}
+.req { font-weight: 400; color: #888; font-size: 12px; }
 input[type="file"], input[type="text"], input[type="password"] {
   width: 100%;
   padding: 9px 10px;
