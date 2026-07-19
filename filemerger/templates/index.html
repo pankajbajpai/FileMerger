@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>File Merger</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="wrap">
+  <h1>File Merger</h1>
+  <p class="sub">Merge PDFs, Spreadsheets, or Word documents into a single file.</p>
+
+  <div class="card">
+    <label class="field-label">1. Choose file type</label>
+    <div class="type-select">
+      <button type="button" class="type-btn active" data-type="pdf">PDF</button>
+      <button type="button" class="type-btn" data-type="excel">Excel (xlsx / xls / csv)</button>
+      <button type="button" class="type-btn" data-type="word">Word (docx)</button>
+    </div>
+
+    <label class="field-label">2. Add files</label>
+    <input type="file" id="fileInput" multiple>
+    <div id="fileList" class="file-list"></div>
+
+    <label class="field-label">3. Output file name (optional)</label>
+    <input type="text" id="outName" placeholder="merged (extension added automatically)">
+
+    <button type="button" id="mergeBtn" class="merge-btn">Merge &amp; Download</button>
+
+    <div id="status" class="status"></div>
+  </div>
+
+  <p class="note">Files never leave your machine's local server. Password-protected
+  files are decrypted in memory using the password you provide, only for the
+  purpose of merging.</p>
+</div>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "filemerger"
+version = "1.0.0"
+description = "Self-contained local web app to merge PDF, Excel, and Word files."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+dependencies = [
+    "flask>=2.2",
+    "pypdf>=3.15",
+    "openpyxl>=3.1",
+    "xlrd>=2.0",
+    "msoffcrypto-tool>=5.0",
+    "python-docx>=1.0",
+    "docxcompose>=1.4",
+]
+
+[project.scripts]
+filemerger = "filemerger.cli:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["filemerger*"]
+
+[tool.setuptools.package-data]
+filemerger = ["templates/*.html", "static/*.css", "static/*.js"]
